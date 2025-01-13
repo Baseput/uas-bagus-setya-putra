@@ -261,3 +261,93 @@ switch ($method) {
 }
 ?>
 ```
+***API CRUD***
+```
+<?php
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+$method = $_SERVER['REQUEST_METHOD'];
+$request = [];
+
+if (isset($_SERVER['PATH_INFO'])) {
+    $request = explode('/', trim($_SERVER['PATH_INFO'],'/'));
+}
+
+function getConnection() {
+    $host = 'localhost';
+    $db   = 'playstation';
+    $user = 'root';
+    $pass = ''; // Ganti dengan password MySQL Anda jika ada
+    $charset = 'utf8mb4';
+
+    $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+    try {
+        return new PDO($dsn, $user, $pass, $options);
+    } catch (\PDOException $e) {
+        throw new \PDOException($e->getMessage(), (int)$e->getCode());
+    }
+}
+
+function response($status, $data = NULL) {
+    header("HTTP/1.1 " . $status);
+    if ($data) {
+        echo json_encode($data);
+    }
+    exit();
+}
+
+$db = getConnection();
+
+switch ($method) {
+    case 'GET':
+        if (!empty($request) && isset($request[0])) {
+            $id = $request[0];
+            $stmt = $db->prepare("SELECT * FROM playstation_units WHERE id = ?");
+            $stmt->execute([$id]);
+            $unit = $stmt->fetch();
+            if ($unit) {
+                response(200, $unit);
+            } else {
+                response(404, ["message" => "Unit not found"]);
+            }
+        } else {
+            $stmt = $db->query("SELECT * FROM playstation_units");
+            $units = $stmt->fetchAll();
+            response(200, $units);
+        }
+        break;
+    
+    case 'POST':
+        $data = json_decode(file_get_contents("php://input"));
+        if (!isset($data->unit_number) || !isset($data->type) || !isset($data->status) || !isset($data->hourly_rate)) {
+            response(400, ["message" => "Missing required fields"]);
+        }
+        $sql = "INSERT INTO playstation_units (unit_number, type, status, hourly_rate) VALUES (?, ?, ?, ?)";
+        $stmt = $db->prepare($sql);
+        if ($stmt->execute([$data->unit_number, $data->type, $data->status, $data->hourly_rate])) {
+            response(201, ["message" => "Unit created", "id" => $db->lastInsertId()]);
+        } else {
+            response(500, ["message" => "Failed to create unit"]);
+        }
+        break;
+    
+    case 'PUT':
+        if (empty($request) || !isset($request[0])) {
+            response(400, ["message" => "Unit ID is required"]);
+        }
+        $id = $request[0];
+        $data = json_decode(file_get_contents("php://input"));
+        if (!isset($data->unit_number) || !isset($data->type) || !isset($data->status) || !isset($data->hourly_rate)) {
+            response(400, ["message" => "Missing required fields"]);
+        }
+        $sql = "UPDATE playstation_units SET unit_number = ?, type = ?, status = ?, hourly_rate = ? WHERE id = ?";
+        $stmt = $db->prepare($sql);
+```
