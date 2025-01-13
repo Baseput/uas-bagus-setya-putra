@@ -1,0 +1,13 @@
+**Database SQL**
+```
+CREATE DATABASE playstation;
+USE playstation;
+
+CREATE TABLE playstation_units (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    unit_number VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    hourly_rate DECIMAL(10, 2) NOT NULL
+);
+```
